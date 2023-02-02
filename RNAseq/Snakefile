@@ -2,14 +2,102 @@ import glob
 
 # Todo: get list of fastq files
 directories, samples, reads = glob_wildcards("raw_data/{directory}/{sample}_{read}.fastq.gz")
-
-
+genome_ref =  glob_wildcards("reference_genome/{genome}.fa")
+genome_annotation =  glob_wildcards("annotation/{genome}.gtf")
 
 rule QC:
     input:
         'raw_data/{directory}/{sample}_{read}.fastq.gz'
     output:
-        'QC/{directory}/{sample}.fastq.gz'
+        'QC/{directory}/'
     threads: 4
     shell:
-        'fastqc -t {threads} --outdir {output} {input'
+        '''
+        mkdir {output}
+        fastqc -t {threads} {input} --outdir {output}
+        '''
+
+rule CudaAdapt:
+    input:
+        read1='raw_data/{directory}/{sample}_R1.fastq.gz',
+        read2='raw_data/{directory}/{sample}_R2.fastq.gz',
+        adapter_a="AATCCCGGATAGG",
+        adapter_A="AATTCCGGATAGG",
+        job=4,
+        quality_score_threshold=20,
+        min_length_threshold=50,
+
+    threads: 4
+    output:
+        read1='adapter_removed/{directory}/{sample}_R1.fastq.gz',
+        read2='adapter_removed/{directory}/{sample}_R2.fastq.gz'
+    shell:
+        '''
+        cudadapt    -a {input.adapter_a} -A {input.adapter_A} 
+                    -j {input.job} 
+                    -q {input.quality_score_threshold} -m {import.min_length_threshold}
+                    -o {output.read1} -p {output.read2}
+                    {input.read1} {input.read2}
+        '''
+
+rule QC_CudaAdapt:
+    input:
+        'adapter_removed/{directory}/{sample}_{read}.fastq.gz'
+    output:
+        'QC_CudaAdapt/{directory}/'
+    threads: 4
+    shell:
+        '''
+        mkdir {output}
+        fastqc -t {threads} {input} --outdir {output}
+        '''
+
+rule Star_Indexing:
+    input:
+        "reference_genome/{genome}.fa",
+        "annotation/{genome}.gtf"
+    threads: 6
+    output:
+        'Star_Indexing/{genome}/'
+    shell:
+        '''
+        mkdir -p {output}
+        STAR    --runThreadN {threads} 
+                --runMode genomeGenerate 
+                --genomeDir ./{output} 
+                --genomeFastaFiles {input[0]} 
+                --sjdbGTFfile {input[1]} 
+                --sjdbOverhang 99 
+                --limitGenomeGenerateRAM 35000000000
+        '''
+    
+rule Star_Mapping:
+    input:
+        ref="reference_genome/{genome}.fa",
+        gtf="annotation/{genome}.gtf",
+        sdir='Star_Indexing/{genome}/',
+        read1='adapter_removed/{directory}/{sample}_R1.fastq.gz',
+        read2='adapter_removed/{directory}/{sample}_R2.fastq.gz'
+    threads: 6
+    output:
+        'Star_Indexing/{genome}/'
+    shell:
+        '''
+        STAR --runThreadN {threads} 
+        --runMode alignReads 
+        --sjdbGTFfile  {input.gtf} 
+        --limitBAMsortRAM 120416916151 
+        --genomeDir ./{input.sdir}
+        --readFilesCommand zcat -
+        -outSAMstrandField intronMotif 
+        --quantMode GeneCounts 
+        --readFilesIn {input.read1} {input.read2}
+        --outSAMtype BAM SortedByCoordinate 
+        --outFileNamePrefix sample1
+        '''
+        
+
+
+
+
+    
