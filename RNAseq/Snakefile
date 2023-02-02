@@ -75,7 +75,7 @@ rule Star_Mapping:
     input:
         ref="reference_genome/{genome}.fa",
         gtf="annotation/{genome}.gtf",
-        sdir='Star_Indexing/{genome}/',
+        star_index='Star_Indexing/{genome}/',
         read1='adapter_removed/{directory}/{sample}_R1.fastq.gz',
         read2='adapter_removed/{directory}/{sample}_R2.fastq.gz'
     threads: 6
@@ -87,7 +87,7 @@ rule Star_Mapping:
         --runMode alignReads 
         --sjdbGTFfile  {input.gtf} 
         --limitBAMsortRAM 120416916151 
-        --genomeDir ./{input.sdir}
+        --genomeDir ./{input.star_index}
         --readFilesCommand zcat -
         -outSAMstrandField intronMotif 
         --quantMode GeneCounts 
