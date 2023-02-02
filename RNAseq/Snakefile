@@ -1,0 +1,15 @@
+import glob
+
+# Todo: get list of fastq files
+directories, samples, reads = glob_wildcards("raw_data/{directory}/{sample}_{read}.fastq.gz")
+
+
+
+rule QC:
+    input:
+        'raw_data/{directory}/{sample}_{read}.fastq.gz'
+    output:
+        'QC/{directory}/{sample}.fastq.gz'
+    threads: 4
+    shell:
+        'fastqc -t {threads} --outdir {output} {input'
