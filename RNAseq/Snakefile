@@ -1,36 +1,50 @@
 import glob
+import os
 
 # Todo: get list of fastq files
-directories, samples, reads = glob_wildcards("raw_data/{directory}/{sample}_{read}.fastq.gz")
-genome_ref =  glob_wildcards("reference_genome/{genome}.fa")
-genome_annotation =  glob_wildcards("annotation/{genome}.gtf")
+directories,fastqs  = glob_wildcards("raw_data/{directory}/{sample}.fastq.gz")
 
-rule QC:
+# Todo: Config File Passer
+configfile: 'config.yaml'
+
+# Todo: Read Config File
+params = configparser.ConfigParser()
+params.read(configfile)
+
+
+if params['cudaAdapter']['run']:
+    read1 = 'adapter_removed/{directory}/{sample}_R1.trimmed.fastq.gz'
+    read2= 'adapter_removed/{directory}/{sample}_R2.trimmed.fastq.gz'
+else:
+    read1 = 'raw_data/{directory}/{sample}_R1.fastq.gz'
+    read2 ='raw_data/{directory}/{sample}_R2.fastq.gz'
+
+
+
+rule fastQC:
     input:
-        'raw_data/{directory}/{sample}_{read}.fastq.gz'
+        'raw_data/{directory}/{sample}.fastq.gz'
     output:
-        'QC/{directory}/'
+        directory('fastqc/{directory}/{sample}_fastqc')
     threads: 4
     shell:
         '''
-        mkdir {output}
+        mkdir -p {output}
         fastqc -t {threads} {input} --outdir {output}
         '''
 
-rule CudaAdapt:
+rule cudaAdapt:
     input:
         read1='raw_data/{directory}/{sample}_R1.fastq.gz',
         read2='raw_data/{directory}/{sample}_R2.fastq.gz',
-        adapter_a="AATCCCGGATAGG",
-        adapter_A="AATTCCGGATAGG",
         job=4,
         quality_score_threshold=20,
         min_length_threshold=50,
 
-    threads: 4
+    threads: 10
     output:
-        read1='adapter_removed/{directory}/{sample}_R1.fastq.gz',
-        read2='adapter_removed/{directory}/{sample}_R2.fastq.gz'
+        read1='adapter_removed/{directory}/{sample}_R1.trimmed.fastq.gz',
+        read2='adapter_removed/{directory}/{sample}_R2.trimmed.fastq.gz'
     shell:
         '''
         cudadapt    -a {input.adapter_a} -A {input.adapter_A} 
@@ -40,11 +54,11 @@ rule CudaAdapt:
                     {input.read1} {input.read2}
         '''
 
-rule QC_CudaAdapt:
+rule QcCudaAdapt:
     input:
-        'adapter_removed/{directory}/{sample}_{read}.fastq.gz'
+        'adapter_removed/{directory}/{sample}.fastq.gz'
     output:
-        'QC_CudaAdapt/{directory}/'
+        directory('adapter_removed_fastqc/{directory}/{sample}_fastqc')
     threads: 4
     shell:
         '''
@@ -52,32 +66,34 @@ rule QC_CudaAdapt:
         fastqc -t {threads} {input} --outdir {output}
         '''
 
-rule Star_Indexing:
+rule starIndexing:
     input:
-        "reference_genome/{genome}.fa",
-        "annotation/{genome}.gtf"
-    threads: 6
+        gtf="{params['starIndex']['gtf']}",
+        ref="{params['starIndex']['ref']}",
+        genome="{params['starIndex']['genome']}",
+    threads: 16
     output:
-        'Star_Indexing/{genome}/'
+        directory('Star_Indexing/{input[2]}')
     shell:
         '''
         mkdir -p {output}
         STAR    --runThreadN {threads} 
                 --runMode genomeGenerate 
                 --genomeDir ./{output} 
-                --genomeFastaFiles {input[0]} 
-                --sjdbGTFfile {input[1]} 
+                --sjdbGTFfile {input[0]} 
+                --genomeFastaFiles  {input[1]}
                 --sjdbOverhang 99 
                 --limitGenomeGenerateRAM 35000000000
         '''
     
 rule Star_Mapping:
     input:
-        ref="reference_genome/{genome}.fa",
-        gtf="annotation/{genome}.gtf",
-        star_index='Star_Indexing/{genome}/',
-        read1='adapter_removed/{directory}/{sample}_R1.fastq.gz',
-        read2='adapter_removed/{directory}/{sample}_R2.fastq.gz'
+        gtf="{params['starIndex']['gtf']}",
+        ref="{params['starIndex']['ref']}",
+        genome="{params['starIndex']['genome']}",
+        star_index="Star_Indexing/{params['starIndex']['genome']}/",
+        read1=read1
+        read2=read2
     threads: 6
     output:
         'Star_Indexing/{genome}/'
@@ -89,15 +105,10 @@ rule Star_Mapping:
         --sjdbGTFfile  {input.gtf} 
         --runMode alignReads 
         --limitBAMsortRAM 120416916151 
-        --readFilesCommand zcat -
-        -outSAMstrandField intronMotif 
+        --readFilesCommand zcat
+        --outSAMstrandField intronMotif 
         --quantMode GeneCounts 
         --outSAMtype BAM SortedByCoordinate 
         --outFileNamePrefix sample1
         '''
         
-
-
-
-
-    
