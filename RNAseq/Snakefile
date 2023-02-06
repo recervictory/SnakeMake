@@ -84,14 +84,14 @@ rule Star_Mapping:
     shell:
         '''
         STAR --runThreadN {threads} 
-        --runMode alignReads 
-        --sjdbGTFfile  {input.gtf} 
-        --limitBAMsortRAM 120416916151 
+        --readFilesIn {input.read1} {input.read2}
         --genomeDir ./{input.star_index}
+        --sjdbGTFfile  {input.gtf} 
+        --runMode alignReads 
+        --limitBAMsortRAM 120416916151 
         --readFilesCommand zcat -
         -outSAMstrandField intronMotif 
         --quantMode GeneCounts 
-        --readFilesIn {input.read1} {input.read2}
         --outSAMtype BAM SortedByCoordinate 
         --outFileNamePrefix sample1
         '''
