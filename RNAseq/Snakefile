@@ -65,6 +65,7 @@ else:
     fastqc_run = []
 
 
+
 rule trimmed_fastqc:
     input:
         'adapter_removed/{sample}_{read}.trimmed.fastq.gz'
@@ -82,19 +83,22 @@ rule starIndexing:
     params:
         gtf = params['starIndex']['gtf_path'],
         ref = params['starIndex']['ref_path'], 
+        cpu_cores = params['starIndex']['cpu_cores'],
+        overhang = params['starIndex']['overhang'],
+        genome_ram_limit = params['starIndex']['genome_ram_limit']
     threads: 16
     output:
         directory('star_genomeDir/')
     shell:
         '''
         mkdir -p {output}
-        STAR    --runThreadN {threads} 
+        STAR    --runThreadN {params.cpu_cores} 
                 --runMode genomeGenerate 
                 --genomeDir ./{output} 
                 --sjdbGTFfile {params.gtf} 
                 --genomeFastaFiles  {params.ref}
-                --sjdbOverhang 99 
-                --limitGenomeGenerateRAM 35000000000
+                --sjdbOverhang {params.overhang} 
+                --limitGenomeGenerateRAM {params.genome_ram_limit}
         '''
 
 
@@ -106,10 +110,17 @@ else:
     star_read2 = 'raw_data/{sample}_R2.fastq.gz'
 
 
-rule Star_Mapping:
+rule starMapping:
     params:
         gtf = params['starIndex']['gtf_path'],
         ref = params['starIndex']['ref_path'],
+        cpu_cores = params['starMapping']['cpu_cores'],
+        runMode = params['starMapping']['runMode'],
+        limitBAMsortRAM  = params['starMapping']['limitBAMsortRAM'],
+        readFilesCommand = params['starMapping']['readFilesCommand'],
+        outSAMstrandField = params['starMapping']['outSAMstrandField'],
+        quantMode = params['starMapping']['quantMode'],
+        outSAMtype = params['starMapping']['outSAMtype']
     input:
         star_index = 'star_genomeDir/',
         read1 = star_read1,
@@ -121,17 +132,17 @@ rule Star_Mapping:
         'star_mapped/{sample}_mapped/{sample}.bam'
     shell:
         '''
-        STAR --runThreadN {threads} 
+        STAR --runThreadN {params.cpu_cores} 
         --readFilesIn {input.read1} {input.read2}
         --genomeDir ./{input.star_index}
         --sjdbGTFfile  {params.gtf} 
-        --runMode alignReads 
-        --limitBAMsortRAM 120416916151 
-        --readFilesCommand zcat
-        --outSAMstrandField intronMotif 
-        --quantMode GeneCounts 
-        --outSAMtype BAM SortedByCoordinate 
-        --outFileNamePrefix sample1
+        --runMode {params.runMode} 
+        --limitBAMsortRAM {params.limitBAMsortRAM} 
+        --readFilesCommand {params.readFilesCommand}
+        --outSAMstrandField {params.outSAMstrandField} 
+        --quantMode {params.quantMode}
+        --outSAMtype {params.outSAMtype} SortedByCoordinate 
+        --outFileNamePrefix {wildcards.sample}
         '''
               
 rule qualiMap:

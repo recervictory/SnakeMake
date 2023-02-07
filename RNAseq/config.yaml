@@ -1,8 +1,8 @@
 fastqc:
-  run: True
+  run: False
 
 cudaAdapt:
-  run: True
+  run: False
   adapter_a: 'AATCCCGGATAGG'
   adapter_A: 'AATTCCGGATAGG'
   cpu_cores: '4'
@@ -18,11 +18,20 @@ starIndex:
   run: True
   gtf_path: 'path/to/genome.gtf'
   ref_path: 'path/to/genome.fa'
+  cpu_cores: '16'
+  overhang: '99'
+  genome_ram_limit: '35000000000'
+
+starMapping:
+  cpu_cores: '16'
+  limitBAMsortRAM : '120416916151'
+  runMode: 'alignReads'
+  readFilesCommand: 'zcat'
+  outSAMstrandField: 'intronMotif'
+  quantMode : 'GeneCounts'
+  outSAMtype : 'BAM'
 
 qualiMap:
   mem-size: '8'
-
-
-
-
+  
 
