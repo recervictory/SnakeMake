@@ -10,7 +10,7 @@ cudaAdapt:
   min_length_threshold: '50'
 
 QcCudaAdapt:
-  run: True
+  run: False
 
  
 starIndex:

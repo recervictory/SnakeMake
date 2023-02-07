@@ -15,7 +15,6 @@ samples, reads = glob_wildcards("raw_data/{sample}_{read}.fastq.gz")
 rule all:
     input:
         expand('fastqc/{sample}_{read}', sample=samples, read=reads),
-        expand('trimmed_fastqc/{sample}_{read}', sample=samples, read=reads),
         'star_genomeDir/',
         expand('star_mapped/{sample}_mapped',sample=samples)
 
