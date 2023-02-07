@@ -1,0 +1,19 @@
+fastq:
+  prefixes: ['R1', 'R2']
+
+cudaAdapt:
+  run: True
+  adapter_a: 'AATCCCGGATAGG'
+  adapter_A: 'AATTCCGGATAGG'
+  cpu_cores: '4'
+  quality_score_threshold : '20'
+  min_length_threshold: '50'
+ 
+starIndex:
+  # path to gtf file
+  gtf: 'path/to/genome.gtf'
+  ref: 'path/to/genome.fa'
+  genome: 'hg38'
+
+
+

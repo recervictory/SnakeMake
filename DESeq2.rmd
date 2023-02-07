@@ -1,0 +1,8 @@
+
+```{r}
+library(DESeq2)
+library(pheatmap)
+library(RColorBrewer)
+library(ggplot2)
+library(EnhancedVolcano)
+```

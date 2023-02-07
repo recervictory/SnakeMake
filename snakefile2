@@ -1,0 +1,91 @@
+# Todo: Read Config File
+with open("config.yaml", "r") as file:
+    params = yaml.safe_load(file)
+
+if params['cudaAdapt']['run']:
+    read1 = 'adapter_removed/{directory}/{sample}_R1.trimmed.fastq.gz'
+    read2= 'adapter_removed/{directory}/{sample}_R2.trimmed.fastq.gz'
+else:
+    read1 = 'raw_data/{directory}/{sample}_R1.fastq.gz'
+    read2 ='raw_data/{directory}/{sample}_R2.fastq.gz'
+
+rule cudaAdapt:
+    input:
+        read1 = expand'raw_data/{directory}/{sample}_R1.fastq.gz',
+        read2 = 'raw_data/{directory}/{sample}_R1.fastq.gz',
+        adapter_a = params['cudaAdapt']['first_adapter'],
+        adapter_A = params['cudaAdapt']['second_adapter'],
+        job = params['cudaAdapt']['cpu_cores'],
+        quality_score_threshold = params['cudaAdapt']['quality_score_threshold '] ,
+        min_length_threshold = params['cudaAdapt']['min_length_threshold'],
+
+    threads: 10
+    output:
+        read1='adapter_removed/{directory}/{sample}_R1.trimmed.fastq.gz',
+        read2='adapter_removed/{directory}/{sample}_R2.trimmed.fastq.gz'
+    shell:
+        '''
+        cudadapt    -a {input.adapter_a} -A {input.adapter_A} 
+                    -j {input.job} 
+                    -q {input.quality_score_threshold} -m {import.min_length_threshold}
+                    -o {output.read1} -p {output.read2}
+                    {input.read1} {input.read2}
+        '''
+
+rule QcCudaAdapt:
+    input:
+        'adapter_removed/{directory}/{sample}.fastq.gz'
+    output:
+        directory('adapter_removed_fastqc/{directory}/{sample}_fastqc')
+    threads: 4
+    shell:
+        '''
+        mkdir {output}
+        fastqc -t {threads} {input} --outdir {output}
+        '''
+
+rule starIndexing:
+    input:
+        gtf="{params['starIndex']['gtf']}",
+        ref="{params['starIndex']['ref']}",
+        genome="{params['starIndex']['genome']}",
+    threads: 16
+    output:
+        directory('Star_Indexing/{input[2]}')
+    shell:
+        '''
+        mkdir -p {output}
+        STAR    --runThreadN {threads} 
+                --runMode genomeGenerate 
+                --genomeDir ./{output} 
+                --sjdbGTFfile {input[0]} 
+                --genomeFastaFiles  {input[1]}
+                --sjdbOverhang 99 
+                --limitGenomeGenerateRAM 35000000000
+        '''
+    
+rule Star_Mapping:
+    input:
+        gtf="{params['starIndex']['gtf']}",
+        ref="{params['starIndex']['ref']}",
+        genome="{params['starIndex']['genome']}",
+        star_index="Star_Indexing/{params['starIndex']['genome']}/",
+        read1=read1,
+        read2=read2
+    threads: 6
+    output:
+        directory('star_mapped/{directory}/{sample}_mapped')
+    shell:
+        '''
+        STAR --runThreadN {threads} 
+        --readFilesIn {input.read1} {input.read2}
+        --genomeDir ./{input.star_index}
+        --sjdbGTFfile  {input.gtf} 
+        --runMode alignReads 
+        --limitBAMsortRAM 120416916151 
+        --readFilesCommand zcat
+        --outSAMstrandField intronMotif 
+        --quantMode GeneCounts 
+        --outSAMtype BAM SortedByCoordinate 
+        --outFileNamePrefix sample1
+        '''
