@@ -11,12 +11,13 @@ with open("config.yaml", "r") as file:
 # Todo: get list of fastq files
 samples, reads = glob_wildcards("raw_data/{sample}_{read}.fastq.gz")
 
-print(params['cudaAdapt']['adapter_a'])
 
 rule all:
     input:
-        expand('adapter_removed/{sample}_R1.trimmed.fastq.gz', sample=samples),
-        expand('adapter_removed/{sample}_R2.trimmed.fastq.gz', sample=samples)
+        expand('fastqc/{sample}_{read}', sample=samples, read=reads),
+        expand('trimmed_fastqc/{sample}_{read}', sample=samples, read=reads),
+        'star_genomeDir/',
+        expand('star_mapped/{sample}_mapped',sample=samples)
 
 rule fastQC:
     input:
@@ -52,5 +53,70 @@ rule cudaAdapt:
                     -o {output.read1} -p {output.read2}
                     {input.read1} {input.read2}
         '''
-                    
-                
+
+rule QcCudaAdapt:
+    input:
+        'adapter_removed/{sample}_{read}.trimmed.fastq.gz'
+    output:
+        directory('trimmed_fastqc/{sample}_{read}'),
+        'trimmed_fastqc/{sample}_{read}/{sample}_{read}.fastq.html'
+    threads: 4
+    shell:
+        '''
+        mkdir -p {output}
+        fastqc -t {threads} {input} --outdir {output}
+        '''            
+
+rule starIndexing:
+    params:
+        gtf = params['starIndex']['gtf_path'],
+        ref = params['starIndex']['ref_path'],
+    threads: 16
+    output:
+        directory('star_genomeDir/')
+    shell:
+        '''
+        mkdir -p {output}
+        STAR    --runThreadN {threads} 
+                --runMode genomeGenerate 
+                --genomeDir ./{output} 
+                --sjdbGTFfile {params.gtf} 
+                --genomeFastaFiles  {params.ref}
+                --sjdbOverhang 99 
+                --limitGenomeGenerateRAM 35000000000
+        '''
+
+
+if params['cudaAdapt']['run']:
+    star_read1 = 'adapter_removed/{sample}_R1.trimmed.fastq.gz'
+    star_read2 = 'adapter_removed/{sample}_R2.trimmed.fastq.gz'
+else:
+    star_read1 = 'raw_data/{sample}_R1.fastq.gz'
+    star_read2 = 'raw_data/{sample}_R2.fastq.gz'
+
+
+rule Star_Mapping:
+    params:
+        gtf = params['starIndex']['gtf_path'],
+        ref = params['starIndex']['ref_path'],
+    input:
+        star_index = 'star_genomeDir/',
+        read1 = star_read1,
+        read2 = star_read2
+    threads: 6
+    output:
+        directory('star_mapped/{sample}_mapped')
+    shell:
+        '''
+        STAR --runThreadN {threads} 
+        --readFilesIn {input.read1} {input.read2}
+        --genomeDir ./{input.star_index}
+        --sjdbGTFfile  {params.gtf} 
+        --runMode alignReads 
+        --limitBAMsortRAM 120416916151 
+        --readFilesCommand zcat
+        --outSAMstrandField intronMotif 
+        --quantMode GeneCounts 
+        --outSAMtype BAM SortedByCoordinate 
+        --outFileNamePrefix sample1
+        '''               

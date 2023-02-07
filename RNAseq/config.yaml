@@ -8,12 +8,17 @@ cudaAdapt:
   cpu_cores: '4'
   quality_score_threshold : '20'
   min_length_threshold: '50'
+
+QcCudaAdapt:
+  run: True
+
  
 starIndex:
   # path to gtf file
-  gtf: 'path/to/genome.gtf'
-  ref: 'path/to/genome.fa'
-  genome: 'hg38'
+  run: True
+  gtf_path: 'path/to/genome.gtf'
+  ref_path: 'path/to/genome.fa'
+
 
 
 
