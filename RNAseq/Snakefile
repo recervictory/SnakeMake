@@ -6,17 +6,21 @@ import yaml
 with open("config.yaml", "r") as file:
     params = yaml.safe_load(file)
 
-
-
 # Todo: get list of fastq files
 samples, reads = glob_wildcards("raw_data/{sample}_{read}.fastq.gz")
 
 
 rule all:
     input:
-        expand('fastqc/{sample}_{read}', sample=samples, read=reads),
         'star_genomeDir/',
-        expand('star_mapped/{sample}_mapped',sample=samples)
+        expand('star_mapped/{sample}_mapped',sample=samples),
+        expand('qualiMap/{sample}.qualiMap.pdf', sample=samples)
+
+
+if params['fastqc']['run']:
+    fastqc_run = expand('fastqc/{sample}_{read}', sample=samples, read=reads)
+else:
+    fastqc_run = []
 
 rule fastQC:
     input:
@@ -35,6 +39,7 @@ rule cudaAdapt:
     input:
         read1 = 'raw_data/{sample}_R1.fastq.gz',
         read2 = 'raw_data/{sample}_R2.fastq.gz',
+        fastqc_run = fastqc_run
     params:
         adapter_a = params['cudaAdapt']['adapter_a'],
         adapter_A = params['cudaAdapt']['adapter_A'],
@@ -53,7 +58,14 @@ rule cudaAdapt:
                     {input.read1} {input.read2}
         '''
 
-rule QcCudaAdapt:
+
+if params['trimmed_fastqc']['run']:
+    fastqc_run = expand('trimmed_fastqc/{sample}_{read}', sample=samples, read=reads)
+else:
+    fastqc_run = []
+
+
+rule trimmed_fastqc:
     input:
         'adapter_removed/{sample}_{read}.trimmed.fastq.gz'
     output:
@@ -69,7 +81,7 @@ rule QcCudaAdapt:
 rule starIndexing:
     params:
         gtf = params['starIndex']['gtf_path'],
-        ref = params['starIndex']['ref_path'],
+        ref = params['starIndex']['ref_path'], 
     threads: 16
     output:
         directory('star_genomeDir/')
@@ -101,10 +113,12 @@ rule Star_Mapping:
     input:
         star_index = 'star_genomeDir/',
         read1 = star_read1,
-        read2 = star_read2
+        read2 = star_read2,
+        trimmed_fastqc = fastqc_run
     threads: 6
     output:
-        directory('star_mapped/{sample}_mapped')
+        directory('star_mapped/{sample}_mapped'),
+        'star_mapped/{sample}_mapped/{sample}.bam'
     shell:
         '''
         STAR --runThreadN {threads} 
@@ -118,4 +132,19 @@ rule Star_Mapping:
         --quantMode GeneCounts 
         --outSAMtype BAM SortedByCoordinate 
         --outFileNamePrefix sample1
-        '''               
+        '''
+              
+rule qualiMap:
+    params:
+        gtf = params['starIndex']['gtf_path'],
+        ref = params['starIndex']['ref_path'],
+    input:
+        'star_mapped/{sample}_mapped/{sample}.bam'
+    output:
+        outdir = directory('qualiMap/{sample}'),
+        report = 'qualiMap/{sample}.qualiMap.pdf'
+    shell:
+        '''
+        qualimap rnaseq --java-mem-size=8G -bam {input} -gtf {params.gtf} -outdir {output.outdir} -outfile {output.outdir} -s -pe
+        '''
+    

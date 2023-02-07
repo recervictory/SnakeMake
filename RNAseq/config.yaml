@@ -1,5 +1,5 @@
-fastq:
-  prefixes: ['R1', 'R2']
+fastqc:
+  run: True
 
 cudaAdapt:
   run: True
@@ -9,8 +9,8 @@ cudaAdapt:
   quality_score_threshold : '20'
   min_length_threshold: '50'
 
-QcCudaAdapt:
-  run: False
+trimmed_fastqc:
+  run: True
 
  
 starIndex:
@@ -18,6 +18,10 @@ starIndex:
   run: True
   gtf_path: 'path/to/genome.gtf'
   ref_path: 'path/to/genome.fa'
+
+qualiMap:
+  mem-size: '8'
+
 
 
 
