@@ -1,37 +1,64 @@
+# fastqc configuration
 fastqc:
-  run: False
+  # Flag to indicate whether fastqc should be run or not
+  run: True
 
+# cudaAdapt configuration
 cudaAdapt:
-  run: False
-  adapter_a: 'AATCCCGGATAGG'
-  adapter_A: 'AATTCCGGATAGG'
-  cpu_cores: '4'
+  # Flag to indicate whether cudaAdapt should be run or not
+  run: True
+  # Adapter sequence for read1
+  adapter_a: 'AGATCGGAAGAG'
+  # Adapter sequence for read2
+  adapter_A: 'AGATCGGAAGAG'
+  # Number of CPU cores to use for cudaAdapt
+  cpu_cores: '16'
+  # Threshold quality score to trim
   quality_score_threshold : '20'
+  # Threshold minimum length of read to keep
   min_length_threshold: '50'
 
+# trimmed_fastqc configuration
 trimmed_fastqc:
+  # Flag to indicate whether trimmed_fastqc should be run or not
   run: True
 
- 
+# starIndex configuration
 starIndex:
-  # path to gtf file
+  # Flag to indicate whether starIndex should be run or not
   run: True
-  gtf_path: 'path/to/genome.gtf'
-  ref_path: 'path/to/genome.fa'
+  # Path to the gtf file for starIndex
+  gtf_path: 'Mus_musculus.GRCm39.105.gtf'
+  # Path to the reference fasta file for starIndex
+  ref_path: 'Mus_musculus.GRCm39.dna.primary_assembly.fa'
+  # Number of CPU cores to use for starIndex
   cpu_cores: '16'
-  overhang: '99'
+  # Read overhang value for starIndex
+  overhang: '150'
+  # RAM limit for starIndex
   genome_ram_limit: '35000000000'
 
+# starMapping configuration
 starMapping:
+  # Number of CPU cores to use for starMapping
   cpu_cores: '16'
+  # RAM limit for BAM sorting during starMapping
   limitBAMsortRAM : '120416916151'
+  # Run mode for starMapping
   runMode: 'alignReads'
+  # Command to read files for starMapping
   readFilesCommand: 'zcat'
+  # OutSAM strand field for starMapping
   outSAMstrandField: 'intronMotif'
-  quantMode : 'GeneCounts'
+  # Quantization modes for starMapping
+  quantMode : ['GeneCounts', 'TranscriptomeSAM' ]
+  # OutSAM type for starMapping
   outSAMtype : 'BAM'
 
+# qualiMap configuration
 qualiMap:
+  # Flag to indicate whether qualiMap should be run or not
+  run: True
+  # Memory size for qualiMap
   mem-size: '8'
-  
 
