@@ -36,7 +36,7 @@ else:
     trimmed_fastqc_run  = []
 
 if params['qualiMap']['run']:
-    target = expand('qualiMap/{sample}', sample=samples)
+    target = expand('star_mapped/{sample}/{sample}_ReadsPerGene.out.tab', sample=samples)
 else:
     target = expand('star_mapped/{sample}',sample=samples)
 
@@ -77,10 +77,6 @@ rule cutAdapt:
         '''
         cutadapt -a {params.adapter_a} -A {params.adapter_A} -j {params.cpu_cores} -q {params.quality_score_threshold} -m {params.min_length_threshold} -o {output.read1} -p {output.read2} {input.read1} {input.read2}
         '''
-
-
-
-
 
 
 rule trimmed_fastqc:
@@ -131,6 +127,7 @@ rule starMapping:
     threads: 16
     output:
         directory('star_mapped/{sample}'),
+        'star_mapped/{sample}/{sample}_ReadsPerGene.out.tab',
     shell:
         '''
         mkdir -p star_mapped/{wildcards.sample}
@@ -162,4 +159,7 @@ rule qualiMap:
         qualimap rnaseq --java-mem-size=8G -bam {input.bam} -gtf {params.gtf} -outdir {output.outdir} -outfile {wildcards.sample}.pdf -s -pe
         '''
     
-    
+rule joinCountFile:
+    input:
+        'qualiMap/{sample}',
+        'star_mapped/{sample}/{sample}_ReadsPerGene.out.tab'
