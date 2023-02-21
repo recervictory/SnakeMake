@@ -42,7 +42,10 @@ else:
 
 
 rule all:
-    input: target
+    input: 
+        target,
+        'results/count_files/{name}.tsv'.format(name=params['meta']['name']),
+    
 
 rule fastQC:
     input:
@@ -159,7 +162,11 @@ rule qualiMap:
         qualimap rnaseq --java-mem-size=8G -bam {input.bam} -gtf {params.gtf} -outdir {output.outdir} -outfile {wildcards.sample}.pdf -s -pe
         '''
     
-rule joinCountFile:
+rule geneCounts:
     input:
-        'qualiMap/{sample}',
-        'star_mapped/{sample}/{sample}_ReadsPerGene.out.tab'
+        countFiles =  expand('star_mapped/{sample}/{sample}_ReadsPerGene.out.tab', sample=set(samples)),
+        script = 'scripts/geneCountJoin.py',
+    output:
+        'results/count_files/{name}.tsv'.format(name= params['meta']['name'])
+    shell:
+        'python {input.script} -i {input.countFiles} -o {output} -s 4'

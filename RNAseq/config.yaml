@@ -1,3 +1,7 @@
+#! Experiment Meta Data:
+meta:
+  name: 'RNA_seq_test'
+
 # fastqc configuration
 fastqc:
   # Flag to indicate whether fastqc should be run or not
