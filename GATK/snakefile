@@ -1,0 +1,43 @@
+# Define input and output files
+configfile: "config.yaml"
+
+rule all:
+    input:
+        expand("results/{sample}.vcf", sample=config['samples'])
+
+rule fastq_to_bam:
+    input:
+        "data/{sample}_1.fastq.gz",
+        "data/{sample}_2.fastq.gz"
+    output:
+        "results/{sample}.bam"
+    shell:
+        "bwa mem -t 8 {config['reference']} {input} | samtools sort -O BAM -o {output}"
+
+rule mark_duplicates:
+    input:
+        "results/{sample}.bam"
+    output:
+        "results/{sample}.dedup.bam"
+    shell:
+        "gatk MarkDuplicates --INPUT {input} --OUTPUT {output} --METRICS_FILE results/{sample}.metrics.txt"
+
+rule base_recalibration:
+    input:
+        "results/{sample}.dedup.bam"
+    output:
+        "results/{sample}.recal.bam"
+    shell:
+        "gatk BaseRecalibrator --INPUT {input} --OUTPUT results/{sample}.recal_data.table --REFERENCE_SEQUENCE {config['reference']} --known-sites {config['dbsnp']} --known-sites {config['hapmap']} --known-sites {config['omni']} --known-sites {config['mills']} && gatk ApplyBQSR --bqsr-recal-file results/{sample}.recal_data.table --input {input} --output {output}"
+
+rule haplotype_caller:
+    input:
+        "results/{sample}.recal.bam"
+    output:
+        "results/{sample}.vcf"
+    shell:
+        "gatk HaplotypeCaller --input {input} --output {output} --reference {config['reference']} --emit-ref-confidence GVCF --sample-ploidy 2 --dbsnp {config['dbsnp']}"
+
+# Define the workflow
+workflow:
+    rule fastq_to_bam

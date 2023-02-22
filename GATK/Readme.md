@@ -4,3 +4,5 @@
 - bwa
 - samptools
 - mosdepth
+
+### Installations

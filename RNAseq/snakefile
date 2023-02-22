@@ -146,7 +146,7 @@ rule starMapping:
         --outSAMtype {params.outSAMtype} SortedByCoordinate \
         --outFileNamePrefix star_mapped/{wildcards.sample}/{wildcards.sample}_ \
         '''
-              
+
 rule qualiMap:
     params:
         gtf = params['starIndex']['gtf_path'],
