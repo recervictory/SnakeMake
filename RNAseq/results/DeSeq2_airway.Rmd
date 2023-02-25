@@ -12,6 +12,7 @@ output: html_document
 
 library(DESeq2)
 library(airway)
+library(ggplot2)
 ```
 
 ### Speed-up and parallelization thoughts
@@ -111,8 +112,10 @@ metadata(resIHW)$ihwResult
 ## Exploring and exporting results
 ### Dispersion plot and fitting alternatives
 Plotting the dispersion estimates is a useful diagnostic. The dispersion plot below is typical, with the final estimates shrunk from the gene-wise estimates towards the fitted estimates. Some gene-wise estimates are flagged as outliers and not shrunk towards the fitted value, (this outlier detection is described in the manual page for estimateDispersionsMAP). The amount of shrinkage can be more or less than seen here, depending on the sample size, the number of coefficients, the row mean and the variability of the gene-wise estimates.
-```{r}
-plotDispEsts(dds)
+```{r Dispersion_est_plot, fig.height=8, fig.width=8}
+plotDispEsts(dds, main = "Dispersion Estimates Plot", 
+             xlab = "Mean of Normalized Counts", 
+             ylab = "Dispersion Estimates")
 ```
 
 
@@ -132,59 +135,78 @@ To explore a count matrix, it is often instructive to look at it as a heatmap. B
 
 
 
-```{r}
+```{r Heatmap_top_20_genes, fig.height=8, fig.width=6}
 library("pheatmap")
+
+# Select the top 20 most highly expressed genes
 select <- order(rowMeans(counts(dds,normalized=TRUE)),
                 decreasing=TRUE)[1:20]
+
+# Extract the "dex" and "cell" metadata columns from the colData object and convert to a data frame
 df <- as.data.frame(colData(dds)[,c("dex","cell")])
+
+# Generate the heatmap plot using pheatmap, with options to turn off row clustering, show column annotations, 
+# and use the "df" data frame as the column annotation data
 pheatmap(assay(airway)[select,], cluster_rows=FALSE, show_rownames=FALSE,
-         cluster_cols=FALSE, annotation_col=df)
+         cluster_cols=FALSE, annotation_col=df,
+         main = "Heatmap of Top 20 Expressed Genes",
+         xlab = "Samples")
+
 ```
 ### Heatmap of the sample-to-sample distances
 Another use of the transformed data is sample clustering. Here, we apply the dist function to the transpose of the transformed count matrix to get sample-to-sample distances.
-```{r}
+```{r heatmap}
+vsd <- vst(dds, blind=FALSE)
+head(vsd)
 sampleDists <- dist(t(assay(vsd)))
 ```
 
 A heatmap of this distance matrix gives us an overview over similarities and dissimilarities between samples. We have to provide a hierarchical clustering hc to the heatmap function based on the sample distances, or else the heatmap function would calculate a clustering based on the distances between the rows/columns of the distance matrix.
 ```{r}
-library("RColorBrewer")
+library("RColorBrewer")  # Load the RColorBrewer package for color palettes
+
+# Convert the sample distance matrix to a matrix and set the row names to a combination of "dex" and "cell" metadata columns
 sampleDistMatrix <- as.matrix(sampleDists)
 rownames(sampleDistMatrix) <- paste(vsd$dex, vsd$cell, sep="-")
+
+# Set the column names to NULL to prevent them from being displayed in the heatmap
 colnames(sampleDistMatrix) <- NULL
+
+# Create a color palette for the heatmap using the colorRampPalette and brewer.pal functions
 colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+
+# Generate the heatmap plot using pheatmap, with options to cluster rows and columns by sample distance and use the "colors" palette for the color scale
 pheatmap(sampleDistMatrix,
          clustering_distance_rows=sampleDists,
          clustering_distance_cols=sampleDists,
-         col=colors)
+         col=colors,
+         main = "Sample Distance Heatmap",  # Add a title to the plot
+         xlab = "Sample ID",  # Change the x-axis label to "Sample ID"
+         ylab = "Sample ID")  # Change the y-axis label to "Sample ID"
+
 
 ```
 
 ### Principal component plot of the samples
 Related to the distance matrix is the PCA plot, which shows the samples in the 2D plane spanned by their first two principal components. This type of plot is useful for visualizing the overall effect of experimental covariates and batch effects.
-```{R}
-vsd <- vst(dds, blind=FALSE)
+```{R, fig.height=5, fig.width=5}
+
 plotPCA(vsd, intgroup=c("dex"))
 ```
-```{r}
+```{r pca_plot, fig.height=5, fig.width=5}
 pcaData <- plotPCA(vsd, intgroup=c("dex", "cell"), returnData=TRUE)
 percentVar <- round(100 * attr(pcaData, "percentVar"))
 ggplot(pcaData, aes(PC1, PC2, color=dex, shape=cell)) +
   geom_point(size=3) +
   xlab(paste0("PC1: ",percentVar[1],"% variance")) +
   ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
-  coord_fixed()
+  coord_fixed() +
+  labs(title = "PCA Plot", 
+       color = "Treatment",
+       shape = "Cell Type")
+
 ```
-### Gene clustering
-In the sample distance heatmap made previously, the dendrogram at the side shows us a hierarchical clustering of the samples. Such a clustering can also be performed for the genes. Since the clustering is only relevant for genes that actually carry a signal, one usually would only cluster a subset of the most highly variable genes. Here, for demonstration, let us select the 20 genes with the highest variance across samples. We will work with the VST data.
-```{r}
-library("genefilter")
-topVarGenes <- head(order(rowVars(assay(vsd)), decreasing = TRUE), 20)
-mat  <- assay(vsd)[ topVarGenes, ]
-mat  <- mat - rowMeans(mat)
-anno <- as.data.frame(colData(vsd)[, c("cell","dex")])
-pheatmap(mat, annotation_col = anno)
-```
+
 
 ### Annotating and exporting results
 Our result table so far only contains the Ensembl gene IDs, but alternative gene names may be more informative for interpretation. Bioconductor’s annotation packages help with mapping various ID schemes to each other. We load the AnnotationDbi package and the annotation package org.Hs.eg.db:
@@ -211,19 +233,20 @@ res$entrez <- mapIds(org.Hs.eg.db,
                      multiVals="first")
 ```
 ```{r}
+res$ENSEMBL <- rownames(res)
 resOrdered <- res[order(res$pvalue),]
 head(resOrdered)
 ```
 ### MAplot
 In DESeq2, the function plotMA shows the log2 fold changes attributable to a given variable over the mean of normalized counts for all the samples in the DESeqDataSet. Points will be colored red if the adjusted p value is less than 0.1. Points which fall out of the window are plotted as open triangles pointing either up or down.
-```{r}
+```{r MA_plot, fig.height=10, fig.width=10}
 ylim <- c(-6.5,6.5)
 drawLines <- function() abline(h=c(-1.5,1.5),col="dodgerblue",lwd=2)
 DESeq2::plotMA(resOrdered, ylim=ylim); drawLines()
 ```
 
 
-```{r}
+```{r MA_ggplot, fig.height=10, fig.width=10}
 #install.packages("ggpubr")
 library(ggpubr)
 
@@ -238,6 +261,39 @@ ggmaplot(resOrdered, main = expression("UnTreated vs Treated"),
    font.main = "bold",
    ggtheme = ggplot2::theme_minimal())
 ```
+### Enahansed volacano
+```{r enahansed_volacano, fig.height=10, fig.width=10}
+library(EnhancedVolcano)
+EnhancedVolcano(resOrdered, 
+                lab = resOrdered$symbol, 
+                x = 'log2FoldChange',
+                y = 'pvalue',
+                xlim = c(-11, 11),
+                title = 'Airway DESeq2 results',
+                subtitle = 'Differential expression',
+                legendPosition = "top",
+                col = c('grey30', 'forestgreen', 'royalblue', 'red2'),
+                colAlpha = 0.9,
+                )
+```
+### Gene clustering
+In the sample distance heatmap made previously, the dendrogram at the side shows us a hierarchical clustering of the samples. Such a clustering can also be performed for the genes. Since the clustering is only relevant for genes that actually carry a signal, one usually would only cluster a subset of the most highly variable genes. Here, for demonstration, let us select the 20 genes with the highest variance across samples. We will work with the VST data.
+```{r top_genes, fig.height=10, fig.width=6}
+library("genefilter")
+topVarGenes <- head(order(rowVars(assay(vsd)), decreasing = TRUE), 50)
+mat  <- assay(vsd)[ topVarGenes, ]
+mat  <- mat - rowMeans(mat)
+ens.str <- substr(rownames(mat), 1, 15)
+rownames(mat) <- mapIds(org.Hs.eg.db,
+                     keys=ens.str,
+                     column="SYMBOL",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+
+anno <- as.data.frame(colData(vsd)[, c("cell","dex")])
+pheatmap(mat, annotation_col = anno)
+```
+
 ### Exporting results
 A more sophisticated way for exporting results the Bioconductor package ReportingTools (Huntley et al. 2013). ReportingTools will automatically generate dynamic HTML documents, including links to external databases using gene identifiers and boxplots summarizing the normalized counts across groups. See the ReportingTools vignettes for full details. The simplest version of creating a dynamic ReportingTools report is performed with the following code:
 ```{r}
@@ -251,6 +307,15 @@ htmlRep <- HTMLReport(shortName="report", title="My report",
                       reportDirectory="./report")
 
 publish(resOrderedDF, htmlRep)
-url <- finish(htmlRep)
-browseURL(url)
+#url <- finish(htmlRep)
+#browseURL(url)
 ```
+
+
+### Saving The Files:
+```{r}
+
+write.table(res, file='results_airway.tsv', sep="\t", quote=FALSE, row.names=TRUE)
+```
+
+
