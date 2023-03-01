@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Dynamic Nested Input Fields</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+  </head>
+  <body>
+    <div id="fields">
+      <div class="condition">
+        <label for="condition-name">Condition Name:</label>
+        <input type="text" name="condition-name[]" class="condition-name">
+        <button type="button" onclick="addSubCondition(this)">Add Condition</button>
+        <button type="button" onclick="addSample(this)">Add Sample</button>
+        <button type="button" onclick="removeCondition(this)">Remove Condition</button>
+        <div class="sub-conditions"></div>
+        <div class="samples"></div>
+      </div>
+    </div>
+    <div class="button-div">
+      <button type="button" onclick="addCondition()">Add Condition</button>
+    <button type="button" onclick="saveData()">Save</button>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>

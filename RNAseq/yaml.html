@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Configuration Generator</title>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h1>STAR SnakeMake Pipeline Config File</h1>
+    <form>
+      <fieldset id="meta">
+        <legend>Experiment Meta Data</legend>
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" /><br /><br />
+        <label for="design">Design:</label>
+        <input type="text" id="design" name="design" /><br /><br />
+
+        <div id="fields">
+          <div class="condition">
+            <label for="condition-name">Condition Name:</label>
+            <input type="text" name="condition-name[]" class="condition-name">
+            <button type="button" onclick="addSubCondition(this)">Add Condition</button>
+            <button type="button" onclick="addSample(this)">Add Sample</button>
+            <button type="button" onclick="removeCondition(this)">Remove Condition</button>
+            <div class="sub-conditions"></div>
+            <div class="samples"></div>
+          </div>
+        </div>
+        <div class="button-div">
+          <button type="button" onclick="addCondition()">Add Condition</button>
+        <button type="button" onclick="saveData()">Save</button>
+        </div>
+      </fieldset>
+
+      <fieldset id="fastqc">
+        <legend>FastQC Configuration</legend>
+        <label for="fastqc_run">Run FastQC:</label>
+        <input type="checkbox" id="fastqc_run" name="fastqc_run" /><br /><br />
+      </fieldset>
+
+      <fieldset id="cudApt">
+        <legend>Cuda Adapter Configuration</legend>
+        <label for="cudaAdapt_run">Run cudaAdapt:</label>
+        <input
+          type="checkbox"
+          id="cudaAdapt_run"
+          name="cudaAdapt_run"
+        /><br /><br />
+        <label for="adapter_a">Adapter sequence for read1:</label>
+        <input type="text" id="adapter_a" name="adapter_a" /><br /><br />
+        <label for="adapter_A">Adapter sequence for read2:</label>
+        <input type="text" id="adapter_A" name="adapter_A" /><br /><br />
+        <label for="cpu_cores">Number of CPU cores:</label>
+        <input
+          type="number"
+          id="cpu_cores"
+          name="cpu_cores"
+          min="1"
+        /><br /><br />
+        <label for="quality_score_threshold">Quality score threshold:</label>
+        <input
+          type="number"
+          id="quality_score_threshold"
+          name="quality_score_threshold"
+        /><br /><br />
+        <label for="min_length_threshold">Minimum length threshold:</label>
+        <input
+          type="number"
+          id="min_length_threshold"
+          name="min_length_threshold"
+        /><br /><br />
+      </fieldset>
+
+      <fieldset id="trimqc">
+        <legend>Trimmed FastQC Configuration</legend>
+        <label for="trimmed_fastqc_run">Run trimmed FastQC:</label>
+        <input
+          type="checkbox"
+          id="trimmed_fastqc_run"
+          name="trimmed_fastqc_run"
+        /><br /><br />
+      </fieldset>
+
+      <fieldset id="indexing">
+        <legend>STAR Indexing</legend>
+        <label for="trimmed_fastqc_run">Run Star Index:</label>
+        <input
+          type="checkbox"
+          id="trimmed_fastqc_run"
+          name="trimmed_fastqc_run"
+        /><br /><br />
+        <label for="gtf_path"> GTF filename:</label>
+        <input type="file" id="gtf_path" name="gtf_path" /><br /><br />
+        <label for="ref_path"> Reference filename:</label>
+        <input type="file" id="ref_path" name="ref_path" /><br /><br />
+        <label for="star_index_cpu_cores">Number of CPU cores:</label>
+        <input
+          type="number"
+          id="star_index_cpu_cores"
+          name="star_index_cpu_cores"
+          min="4"
+        /><br /><br />
+        <label for="overhang">Overhang length:</label>
+        <input type="number" id="overhang"" name="overhang"" min="1"><br /><br />
+        <label for="genome_ram_limit">RAM limit for starIndex:</label>
+        <input type="number" id="genome_ram_limit"" name="genome_ram_limit""
+        min="1"><br /><br />
+      </fieldset>
+
+      <fieldset id="mapping">
+        <legend>STAR Mapping Configuration</legend>
+        <label for="star_map_cpu_cores">CPU Cores:</label>
+        <input
+          type="number"
+          id="cpu_cores"
+          name="star_map_cpu_cores"
+          value="16"
+        /><br /><br />
+        <label for="limitBAMsortRAM">Limit BAM Sort RAM:</label>
+        <input
+          type="text"
+          id="limitBAMsortRAM"
+          name="limitBAMsortRAM"
+          value="120416916151"
+        /><br /><br />
+        <label for="runMode">Run Mode:</label>
+        <input
+          type="text"
+          id="runMode"
+          name="runMode"
+          value="alignReads"
+        /><br /><br />
+        <label for="readFilesCommand">Read Files Command:</label>
+        <input
+          type="text"
+          id="readFilesCommand"
+          name="readFilesCommand"
+          value="zcat"
+        /><br /><br />
+        <label for="outSAMstrandField">OutSAM Strand Field:</label>
+        <input
+          type="text"
+          id="outSAMstrandField"
+          name="outSAMstrandField"
+          value="intronMotif"
+        /><br /><br />
+        <label for="quantMode">Quantization Modes:</label><br />
+        <input
+          type="checkbox"
+          id="geneCounts"
+          name="quantMode[]"
+          value="GeneCounts"
+        />
+        <label for="geneCounts">Gene Counts</label><br />
+        <input
+          type="checkbox"
+          id="transcriptomeSAM"
+          name="quantMode[]"
+          value="TranscriptomeSAM"
+        />
+        <label for="transcriptomeSAM">Transcriptome SAM</label><br /><br />
+        <label for="outSAMtype">OutSAM Type:</label>
+        <input
+          type="text"
+          id="outSAMtype"
+          name="outSAMtype"
+          value="BAM"
+        /><br /><br />
+      </fieldset>
+
+      <button type="submit">Download Configuration</button>
+    </form>
+
+    <script>
+      
+    </script>
+   
+    <script src="script.js"></script>
+  </body>
+</html>
