@@ -110,7 +110,7 @@ form.addEventListener("submit", (event) => {
   const config = {
     meta: {
       name: form.elements.name.value,
-      design: form.elements.design.value,
+      design: form.elements.design.value.split("\\").pop().split("/").pop(),
     },
     fastqc: {
       run: form.elements.fastqc_run.checked,

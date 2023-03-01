@@ -1,6 +1,8 @@
 #! Experiment Meta Data:
 meta:
   name: 'RNA_seq_test'
+  design: "input_design.txt"
+  
 
 # fastqc configuration
 fastqc:
@@ -66,3 +68,6 @@ qualiMap:
   # Memory size for qualiMap
   mem-size: '8'
 
+DeSeq2:
+  p_value: '0.05'
+  ref: 'Control'
