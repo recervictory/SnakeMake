@@ -10,58 +10,32 @@ with open("config.yaml", "r") as file:
 samples, reads = glob_wildcards("raw_data/{sample}_{read}.fastq.gz")
 
 
+rule all:
+    input:
+        'star_genomeDir/',
+        expand('star_mapped/{sample}_mapped',sample=samples),
+        expand('qualiMap/{sample}.qualiMap.pdf', sample=samples)
 
 
-# Todo: Job run Choice
 if params['fastqc']['run']:
     fastqc_run = expand('fastqc/{sample}_{read}', sample=samples, read=reads)
-    star_fastqc_run = []
 else:
-    star_fastqc_run = []
     fastqc_run = []
-
-if params['cudaAdapt']['run']:
-    star_read1 = 'trimmed/{sample}_R1.trimmed.fastq.gz'
-    star_read2 = 'trimmed/{sample}_R2.trimmed.fastq.gz'
-else:
-    star_read1 = 'raw_data/{sample}_R1.fastq.gz'
-    star_read2 = 'raw_data/{sample}_R2.fastq.gz'
-    params['trimmed_fastqc']['run'] = False
-    if params['fastqc']['run']:
-        star_fastqc_run = expand('fastqc/{sample}_{read}', sample=samples, read=reads)
-
-if params['trimmed_fastqc']['run']:
-    trimmed_fastqc_run = expand('trimmed_fastqc/{sample}_{read}', sample=samples, read=reads)
-else:
-    trimmed_fastqc_run  = []
-
-if params['qualiMap']['run']:
-    target = expand('star_mapped/{sample}/{sample}_ReadsPerGene.out.tab', sample=samples)
-else:
-    target = expand('star_mapped/{sample}',sample=samples)
-
-
-rule all:
-    input: 
-        target,
-        'results/count_files/{name}.tsv'.format(name=params['meta']['name']),
-    
 
 rule fastQC:
     input:
         'raw_data/{sample}_{read}.fastq.gz'
     output:
         directory('fastqc/{sample}_{read}'),
-    threads: 2
+        'fastqc/{sample}_{read}/{sample}_{read}.fastq.html'
+    threads: 4
     shell:
         '''
         mkdir -p {output}
         fastqc -t {threads} {input} --outdir {output}
         '''
 
-
-
-rule cutAdapt:
+rule cudaAdapt:
     input:
         read1 = 'raw_data/{sample}_R1.fastq.gz',
         read2 = 'raw_data/{sample}_R2.fastq.gz',
@@ -72,21 +46,32 @@ rule cutAdapt:
         cpu_cores = params['cudaAdapt']['cpu_cores'],
         quality_score_threshold = params['cudaAdapt']['quality_score_threshold'],
         min_length_threshold = params['cudaAdapt']['min_length_threshold']
-    threads: 16
     output:
-        read1='trimmed/{sample}_R1.trimmed.fastq.gz',
-        read2='trimmed/{sample}_R2.trimmed.fastq.gz'
+        read1='adapter_removed/{sample}_R1.trimmed.fastq.gz',
+        read2='adapter_removed/{sample}_R2.trimmed.fastq.gz'
     shell:
         '''
-        cutadapt -a {params.adapter_a} -A {params.adapter_A} -j {params.cpu_cores} -q {params.quality_score_threshold} -m {params.min_length_threshold} -o {output.read1} -p {output.read2} {input.read1} {input.read2}
+        cudadapt    -a {params.adapter_a} -A {params.adapter_A} 
+                    -j {params.cpu_cores} 
+                    -q {params.quality_score_threshold} -m {params.min_length_threshold}
+                    -o {output.read1} -p {output.read2}
+                    {input.read1} {input.read2}
         '''
+
+
+if params['trimmed_fastqc']['run']:
+    fastqc_run = expand('trimmed_fastqc/{sample}_{read}', sample=samples, read=reads)
+else:
+    fastqc_run = []
+
 
 
 rule trimmed_fastqc:
     input:
-        'trimmed/{sample}_{read}.trimmed.fastq.gz'
+        'adapter_removed/{sample}_{read}.trimmed.fastq.gz'
     output:
         directory('trimmed_fastqc/{sample}_{read}'),
+        'trimmed_fastqc/{sample}_{read}/{sample}_{read}.fastq.html'
     threads: 4
     shell:
         '''
@@ -107,8 +92,23 @@ rule starIndexing:
     shell:
         '''
         mkdir -p {output}
-        STAR --runThreadN {params.cpu_cores} --runMode genomeGenerate --genomeDir ./{output} --sjdbGTFfile {params.gtf} --genomeFastaFiles  {params.ref} --sjdbOverhang {params.overhang} --limitGenomeGenerateRAM {params.genome_ram_limit}
+        STAR    --runThreadN {params.cpu_cores} 
+                --runMode genomeGenerate 
+                --genomeDir ./{output} 
+                --sjdbGTFfile {params.gtf} 
+                --genomeFastaFiles  {params.ref}
+                --sjdbOverhang {params.overhang} 
+                --limitGenomeGenerateRAM {params.genome_ram_limit}
         '''
+
+
+if params['cudaAdapt']['run']:
+    star_read1 = 'adapter_removed/{sample}_R1.trimmed.fastq.gz'
+    star_read2 = 'adapter_removed/{sample}_R2.trimmed.fastq.gz'
+else:
+    star_read1 = 'raw_data/{sample}_R1.fastq.gz'
+    star_read2 = 'raw_data/{sample}_R2.fastq.gz'
+
 
 rule starMapping:
     params:
@@ -119,54 +119,43 @@ rule starMapping:
         limitBAMsortRAM  = params['starMapping']['limitBAMsortRAM'],
         readFilesCommand = params['starMapping']['readFilesCommand'],
         outSAMstrandField = params['starMapping']['outSAMstrandField'],
-        quantMode = ' '.join(params['starMapping']['quantMode']),
+        quantMode = params['starMapping']['quantMode'],
         outSAMtype = params['starMapping']['outSAMtype']
     input:
         star_index = 'star_genomeDir/',
         read1 = star_read1,
         read2 = star_read2,
-        trimmed_fastqc = trimmed_fastqc_run,
-        fastqc_run = star_fastqc_run
-    threads: 16
+        trimmed_fastqc = fastqc_run
+    threads: 6
     output:
-        directory('star_mapped/{sample}'),
-        'star_mapped/{sample}/{sample}_ReadsPerGene.out.tab',
+        directory('star_mapped/{sample}_mapped'),
+        'star_mapped/{sample}_mapped/{sample}.bam'
     shell:
         '''
-        mkdir -p star_mapped/{wildcards.sample}
-        STAR --runThreadN {params.cpu_cores} \
-        --readFilesIn {input.read1} {input.read2} \
-        --genomeDir ./{input.star_index} \
-        --sjdbGTFfile  {params.gtf} \
-        --runMode {params.runMode} \
-        --limitBAMsortRAM {params.limitBAMsortRAM} \
-        --readFilesCommand {params.readFilesCommand} \
-        --outSAMstrandField {params.outSAMstrandField} \
-        --quantMode {params.quantMode} \
-        --outSAMtype {params.outSAMtype} SortedByCoordinate \
-        --outFileNamePrefix star_mapped/{wildcards.sample}/{wildcards.sample}_ \
+        STAR --runThreadN {params.cpu_cores} 
+        --readFilesIn {input.read1} {input.read2}
+        --genomeDir ./{input.star_index}
+        --sjdbGTFfile  {params.gtf} 
+        --runMode {params.runMode} 
+        --limitBAMsortRAM {params.limitBAMsortRAM} 
+        --readFilesCommand {params.readFilesCommand}
+        --outSAMstrandField {params.outSAMstrandField} 
+        --quantMode {params.quantMode}
+        --outSAMtype {params.outSAMtype} SortedByCoordinate 
+        --outFileNamePrefix {wildcards.sample}
         '''
-
+              
 rule qualiMap:
     params:
         gtf = params['starIndex']['gtf_path'],
         ref = params['starIndex']['ref_path'],
     input:
-        path = 'star_mapped/{sample}',
-        bam = 'star_mapped/{sample}/{sample}_Aligned.sortedByCoord.out.bam'
-    threads: 8
+        'star_mapped/{sample}_mapped/{sample}.bam'
     output:
         outdir = directory('qualiMap/{sample}'),
+        report = 'qualiMap/{sample}.qualiMap.pdf'
     shell:
         '''
-        qualimap rnaseq --java-mem-size=8G -bam {input.bam} -gtf {params.gtf} -outdir {output.outdir} -outfile {wildcards.sample}.pdf -s -pe
+        qualimap rnaseq --java-mem-size=8G -bam {input} -gtf {params.gtf} -outdir {output.outdir} -outfile {output.outdir} -s -pe
         '''
     
-rule geneCounts:
-    input:
-        countFiles =  expand('star_mapped/{sample}/{sample}_ReadsPerGene.out.tab', sample=set(samples)),
-        script = 'scripts/geneCountJoin.py',
-    output:
-        'results/count_files/{name}.tsv'.format(name= params['meta']['name'])
-    shell:
-        'python {input.script} -i {input.countFiles} -o {output} -s 4'
