@@ -9,7 +9,7 @@ with open("config.yaml", "r") as file:
 # Todo: get list of fastq files
 samples, reads = glob_wildcards("raw_data/{sample}_{read}.fastq.gz")
 
-print(samples, reads)
+#print(samples, reads)
 
 # Todo: Job run Choice
 if params['fastqc']['run']:
