@@ -18,7 +18,7 @@ cudaAdapt:
   # Adapter sequence for read2
   adapter_A: 'AGATCGGAAGAG'
   # Number of CPU cores to use for cudaAdapt
-  cpu_cores: '16'
+  cpu_cores: '2'
   # Threshold quality score to trim
   quality_score_threshold : '20'
   # Threshold minimum length of read to keep
@@ -34,11 +34,11 @@ starIndex:
   # Flag to indicate whether starIndex should be run or not
   run: True
   # Path to the gtf file for starIndex
-  gtf_path: 'Mus_musculus.GRCm39.105.gtf'
+  gtf_path: '/RNAseq/resources/genome.gtf'
   # Path to the reference fasta file for starIndex
-  ref_path: 'Mus_musculus.GRCm39.dna.primary_assembly.fa'
+  ref_path: '/RNAseq/resources/genome.fasta'
   # Number of CPU cores to use for starIndex
-  cpu_cores: '16'
+  cpu_cores: '2'
   # Read overhang value for starIndex
   overhang: '150'
   # RAM limit for starIndex
@@ -47,7 +47,7 @@ starIndex:
 # starMapping configuration
 starMapping:
   # Number of CPU cores to use for starMapping
-  cpu_cores: '16'
+  cpu_cores: '2'
   # RAM limit for BAM sorting during starMapping
   limitBAMsortRAM : '120416916151'
   # Run mode for starMapping
@@ -64,7 +64,7 @@ starMapping:
 # qualiMap configuration
 qualiMap:
   # Flag to indicate whether qualiMap should be run or not
-  run: False
+  run: True
   # Memory size for qualiMap
   mem-size: '8'
 

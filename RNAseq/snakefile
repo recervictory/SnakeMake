@@ -9,6 +9,7 @@ with open("config.yaml", "r") as file:
 # Todo: get list of fastq files
 samples, reads = glob_wildcards("raw_data/{sample}_{read}.fastq.gz")
 
+print(samples, reads)
 
 # Todo: Job run Choice
 if params['fastqc']['run']:
@@ -40,8 +41,9 @@ else:
 
 
 rule all:
-    input: 
+    input:
         target,
+        expand('star_mapped/{sample}',sample=samples),
         'results/DeSeq2_{name}.tsv'.format(name= params['meta']['name'])
     
 rule fastQC:
