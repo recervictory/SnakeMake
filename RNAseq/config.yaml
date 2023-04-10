@@ -64,7 +64,7 @@ starMapping:
 # qualiMap configuration
 qualiMap:
   # Flag to indicate whether qualiMap should be run or not
-  run: True
+  run: False
   # Memory size for qualiMap
   mem-size: '8'
 
