@@ -1,0 +1,17 @@
+image:
+  file: .gitpod.Dockerfile
+
+# List the ports you want to expose
+ports:
+  - port: 8888
+    onOpen: open-preview
+
+# List the extensions you want to install
+vscode:
+  extensions:
+    - ms-python.python
+
+# List the packages you want to install with conda
+tasks:
+  - init: conda init bash && conda create -n myenv python=3.8
+  - command: conda activate myenv && conda install -y pandas numpy matplotlib
