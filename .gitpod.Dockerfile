@@ -1,12 +1,14 @@
-image:
-  file: .gitpod.Dockerfile
-  
-# List the extensions you want to install
-vscode:
-  extensions:
-    - ms-python.python
+FROM gitpod/workspace-full
 
-# List the packages you want to install with conda
-tasks:
-  - init: conda init bash && conda create -n myenv python=3.8
-  - command: conda activate myenv && conda install -y pandas numpy matplotlib
+# Install Conda
+RUN curl -o ~/miniconda.sh -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
+    chmod +x ~/miniconda.sh && \
+    ~/miniconda.sh -b -p ~/.conda && \
+    rm ~/miniconda.sh && \
+    echo "export PATH=~/.conda/bin:$PATH" >> ~/.bashrc
+
+# Set Conda as default package manager
+RUN conda init bash
+
+# Install additional packages
+RUN conda install -y conda
