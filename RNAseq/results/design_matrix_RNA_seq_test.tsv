@@ -1,0 +1,5 @@
+sample	condition
+A1-untreated	Control
+B2-untreated	Control
+A1-treated	Drug
+B2-treated	Drug

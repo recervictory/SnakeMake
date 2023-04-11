@@ -131,3 +131,9 @@ dmypy.json
 #! user
 bin/
 data/
+fastqc/
+.snakemake/
+trimmed/
+trimmed_fastqc/
+star_genomeDir/
+star_mapped/

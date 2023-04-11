@@ -34,9 +34,9 @@ starIndex:
   # Flag to indicate whether starIndex should be run or not
   run: True
   # Path to the gtf file for starIndex
-  gtf_path: '/RNAseq/resources/genome.gtf'
+  gtf_path: 'resources/genome.gtf'
   # Path to the reference fasta file for starIndex
-  ref_path: '/RNAseq/resources/genome.fasta'
+  ref_path: 'resources/genome.fasta'
   # Number of CPU cores to use for starIndex
   cpu_cores: '2'
   # Read overhang value for starIndex
